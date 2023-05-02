@@ -1,6 +1,5 @@
-// nfqnl_test.c
 /*
-	source: https://netfilter.org/projects/libnetfilter_queue/index.html
+	original source: https://netfilter.org/projects/libnetfilter_queue/index.html
 */
 
 

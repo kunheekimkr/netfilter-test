@@ -1,10 +1,10 @@
 LDLIBS=-lnetfilter_queue
 
-all: nfqnl_test
+all: netfilter-test
 
-nfqnl_test.o: nfqnl_test.c
+main.o: main.c libnet.h
 
-nfqnl_test: nfqnl_test.o
+netfilter-test: main.o
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 clean:
