@@ -10,19 +10,31 @@
 #include <linux/types.h>
 #include <linux/netfilter.h>		/* for NF_ACCEPT */
 #include <errno.h>
+#include <string>
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
+#include "libnet.h"
 
+using namespace std;
+
+string host;
+
+void usage() {
+	printf("syntax : netfilter-test <host>\nsample : netfilter-test test.gilgil.net");
+}
+
+
+/*
 void dump(unsigned char* buf, int size) {
 	int i;
 	for (i = 0; i < size; i++) {
-		if (i != 0 && i % 16 == 0)
+		if (i % 16 == 0)
 			printf("\n");
 		printf("%02X ", buf[i]);
 	}
 	printf("\n");
 }
-
+*/
 
 /* returns packet id */
 static uint32_t print_pkt (struct nfq_data *tb)
@@ -37,20 +49,26 @@ static uint32_t print_pkt (struct nfq_data *tb)
 	ph = nfq_get_msg_packet_hdr(tb);
 	if (ph) {
 		id = ntohl(ph->packet_id);
+
+		/*
 		printf("hw_protocol=0x%04x hook=%u id=%u ",
 			ntohs(ph->hw_protocol), ph->hook, id);
+		*/
 	}
 
 	hwph = nfq_get_packet_hw(tb);
 	if (hwph) {
 		int i, hlen = ntohs(hwph->hw_addrlen);
 
+		/*
 		printf("hw_src_addr=");
 		for (i = 0; i < hlen-1; i++)
 			printf("%02x:", hwph->hw_addr[i]);
 		printf("%02x ", hwph->hw_addr[hlen-1]);
+		*/
 	}
 
+	/*
 	mark = nfq_get_nfmark(tb);
 	if (mark)
 		printf("mark=%u ", mark);
@@ -87,7 +105,7 @@ static uint32_t print_pkt (struct nfq_data *tb)
 	}
 
 	fputc('\n', stdout);
-
+	*/
 	return id;
 }
 	
@@ -96,7 +114,34 @@ static int cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg,
 	      struct nfq_data *nfa, void *data)
 {
 	uint32_t id = print_pkt(nfa);
-	printf("entering callback\n");
+	//printf("entering callback\n");
+	u_char *pkt;
+
+	int len = nfq_get_payload(nfa, &pkt);
+	
+	struct libnet_ipv4_hdr *ip_hdr = (struct libnet_ipv4_hdr *)pkt;
+	int idx =0;
+	if(ip_hdr->ip_p == 0x06) { //TCP
+		idx += ip_hdr->ip_hl * 4;
+		struct libnet_tcp_hdr *tcp_hdr = (struct libnet_tcp_hdr *)(pkt + idx);
+		idx += tcp_hdr->th_off * 4;
+
+		if(ntohs(tcp_hdr->th_sport) == 80 || ntohs(tcp_hdr->th_dport) == 80 ) { //HTTP
+
+		string httpdata = (char*)(pkt + idx);
+		if(httpdata.find(host) != string::npos) { // finds host in httpdata
+			printf("%s blocked\n", host.c_str());
+			return nfq_set_verdict(qh, id, NF_DROP, 0, NULL);
+		} else {
+			printf("Passed HTTP packet\n");
+		}
+		} else {
+			printf("Not HTTP! (source port = %d, destination port = %d)\n", ntohs(tcp_hdr->th_sport));
+		}
+
+	} else  {
+		printf("Not TCP! (ip_p = %d)\n", ip_hdr->ip_p);
+	}
 	return nfq_set_verdict(qh, id, NF_ACCEPT, 0, NULL);
 }
 
@@ -106,16 +151,14 @@ int main(int argc, char **argv)
 	struct nfq_q_handle *qh;
 	int fd;
 	int rv;
-	uint32_t queue = 0;
 	char buf[4096] __attribute__ ((aligned));
 
-	if (argc == 2) {
-		queue = atoi(argv[1]);
-		if (queue > 65535) {
-			fprintf(stderr, "Usage: %s [<0-65535>]\n", argv[0]);
-			exit(EXIT_FAILURE);
-		}
+	if(argc !=2) {
+		usage();
+		return -1;
 	}
+	
+	host = argv[1];
 
 	printf("opening library handle\n");
 	h = nfq_open();
@@ -136,8 +179,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	printf("binding this socket to queue '%d'\n", queue);
-	qh = nfq_create_queue(h, queue, &cb, NULL);
+	printf("binding this socket to queue '0'\n");
+	qh = nfq_create_queue(h, 0, &cb, NULL);
 	if (!qh) {
 		fprintf(stderr, "error during nfq_create_queue()\n");
 		exit(1);
@@ -167,7 +210,7 @@ int main(int argc, char **argv)
 
 	for (;;) {
 		if ((rv = recv(fd, buf, sizeof(buf), 0)) >= 0) {
-			printf("pkt received\n");
+			//printf("pkt received\n");
 			nfq_handle_packet(h, buf, rv);
 			continue;
 		}

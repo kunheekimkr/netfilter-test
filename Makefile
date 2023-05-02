@@ -2,7 +2,7 @@ LDLIBS=-lnetfilter_queue
 
 all: netfilter-test
 
-main.o: main.c libnet.h
+main.o: main.cpp libnet.h
 
 netfilter-test: main.o
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
