@@ -14,6 +14,17 @@
 
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
+void dump(unsigned char* buf, int size) {
+	int i;
+	for (i = 0; i < size; i++) {
+		if (i != 0 && i % 16 == 0)
+			printf("\n");
+		printf("%02X ", buf[i]);
+	}
+	printf("\n");
+}
+
+
 /* returns packet id */
 static uint32_t print_pkt (struct nfq_data *tb)
 {
@@ -71,8 +82,10 @@ static uint32_t print_pkt (struct nfq_data *tb)
 		printf("secctx=\"%.*s\" ", ret, secdata);
 
 	ret = nfq_get_payload(tb, &data);
-	if (ret >= 0)
+	if (ret >= 0){
+		dump(data, ret);
 		printf("payload_len=%d ", ret);
+	}
 
 	fputc('\n', stdout);
 
