@@ -56,19 +56,20 @@ static uint32_t print_pkt (struct nfq_data *tb)
 		*/
 	}
 
+	/*
 	hwph = nfq_get_packet_hw(tb);
 	if (hwph) {
 		int i, hlen = ntohs(hwph->hw_addrlen);
 
-		/*
+		
 		printf("hw_src_addr=");
 		for (i = 0; i < hlen-1; i++)
 			printf("%02x:", hwph->hw_addr[i]);
 		printf("%02x ", hwph->hw_addr[hlen-1]);
-		*/
+		
 	}
 
-	/*
+	
 	mark = nfq_get_nfmark(tb);
 	if (mark)
 		printf("mark=%u ", mark);
