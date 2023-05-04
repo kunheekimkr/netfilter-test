@@ -8,4 +8,4 @@ netfilter-test: main.o
 	$(LINK.cc) $^ $(LOADLIBES) $(LDLIBS) -o $@
 
 clean:
-	rm -f nfqnl_test *.o
+	rm -f netfilter-test *.o
